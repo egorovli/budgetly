@@ -1,0 +1,121 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "tailwindcss-safe-area";
+
+@import "./shadcn.css";
+@import "./inter.css";
+
+@plugin "@tailwindcss/forms" {
+	strategy: "class";
+}
+
+/* @custom-variant print (@media print); */
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+@custom-variant light (&:where(.light, .light *, [data-theme="light"], [data-theme="light"] *));
+
+@utility no-scrollbar {
+	&::-webkit-scrollbar {
+		display: none;
+	}
+
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+}
+
+@utility light-theme {
+	/* Surface colors - keep layouts neutral */
+	--color-background: #ffffff; /* Pure white background */
+	--color-surface: #f9fbff; /* Near-white elevated surfaces */
+	--color-surface-muted: #f1f5fb; /* Faint tinted secondary surfaces */
+
+	/* Border and input */
+	--color-border: #e4e8f2; /* Cool neutral border */
+
+	/* Text colors */
+	--color-foreground: #111322; /* Neutral charcoal text */
+	--color-muted: #5a5d73; /* Muted slate text */
+
+	/* Accent colors */
+	--color-accent: var(--color-light-sky-blue-500); /* Palette-driven accent */
+	--color-accent-foreground: var(--color-light-sky-blue-100);
+	--color-ring: var(--color-uranian-blue-400);
+}
+
+@utility dark-theme {
+	/* Surface colors - neutral charcoal */
+	--color-background: #0b0d14;
+	--color-surface: #151926;
+	--color-surface-muted: #1d2232;
+
+	/* Border and input */
+	--color-border: #2e3447;
+
+	/* Text colors */
+	--color-foreground: #f5f7ff;
+	--color-muted: #c3c8df;
+
+	/* Accent colors */
+	--color-accent: var(--color-carnation-pink-500);
+	--color-accent-foreground: var(--color-carnation-pink-100);
+	--color-ring: var(--color-uranian-blue-400);
+}
+
+@theme {
+	/* Font Family */
+	--font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+}
+
+/* Semantic colors that reference theme variables */
+
+@layer base {
+	* {
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+
+	/* Theme application */
+	@media (prefers-color-scheme: dark) {
+		:root {
+			@apply dark-theme;
+		}
+	}
+
+	@media (prefers-color-scheme: light) {
+		:root {
+			@apply light-theme;
+		}
+	}
+
+	:root[data-theme="light"],
+	:root[class~="light"] {
+		@apply light-theme;
+	}
+
+	:root[data-theme="dark"],
+	:root[class~="dark"] {
+		@apply dark-theme;
+	}
+
+	@supports (font-variation-settings: normal) {
+		:root {
+			--font-sans:
+				"InterVariable", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+
+			font-optical-sizing: auto;
+		}
+	}
+}
+
+/* Safe area utilities for notched devices */
+@utility pb-safe {
+	padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+@utility pt-safe {
+	padding-top: env(safe-area-inset-top, 0);
+}
+
+@utility px-safe {
+	padding-left: env(safe-area-inset-left, 0);
+	padding-right: env(safe-area-inset-right, 0);
+}
