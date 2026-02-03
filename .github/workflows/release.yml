@@ -1,0 +1,87 @@
+name: Release
+
+# Automates releases using conventional commits via release-please.
+# - On pushes to main: creates/updates a release PR with changelog
+# - When release PR merges: creates a GitHub release and tag
+# - The release event triggers Build workflow, which then triggers Deploy
+#
+# IMPORTANT: Uses RELEASE_TOKEN (PAT) instead of GITHUB_TOKEN so that
+# the release event cascades to trigger Build and Deploy workflows.
+# Create a PAT with `contents: write` and `pull-requests: write` scopes,
+# then add it as a repository secret named RELEASE_TOKEN.
+# See: https://github.com/googleapis/release-please-action
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Prevent concurrent release operations
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  CONCURRENCY_GROUP: release-${{ github.ref }}
+
+jobs:
+  # Workflow metadata (runs first)
+  meta:
+    name: Workflow info
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Output workflow metadata
+        run: |
+          echo "### ⚙️ Workflow Info" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Concurrency Group** | \`$CONCURRENCY_GROUP\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Event** | \`${{ github.event_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Ref** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **SHA** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Actor** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+
+  release:
+    name: Release
+    needs:
+      - meta
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Run Release Please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          # Uses manifest config from release-please-config.json
+          # and version tracking from .release-please-manifest.json
+          # PAT enables release event to cascade to other workflows
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Release Summary
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          echo "## 🚀 Release Created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** \`${{ steps.release.outputs.tag_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**SHA:** \`${{ steps.release.outputs.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Build and Deploy workflows will be triggered by the release event." >> $GITHUB_STEP_SUMMARY
+
+      - name: PR Summary
+        if: ${{ steps.release.outputs.pr && !steps.release.outputs.release_created }}
+        run: |
+          echo "## 📝 Release PR Updated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "A release PR has been created or updated." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Review and merge when ready to create a release." >> $GITHUB_STEP_SUMMARY
+

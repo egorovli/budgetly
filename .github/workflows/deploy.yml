@@ -1,0 +1,289 @@
+name: Deploy
+
+# Dynamic run name showing: trigger type, version, environment, actor
+# Adds (skipped) suffix when triggered by non-release builds
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch' && 'manual' || 'auto' }}:
+  ${{ inputs.image_tag || github.event.workflow_run.head_branch || 'latest' }}
+  → ${{ inputs.environment || 'production' }}
+  by @${{ github.actor }}${{
+    github.event_name == 'workflow_run' &&
+    (github.event.workflow_run.conclusion != 'success' || github.event.workflow_run.event != 'release')
+    && ' (skipped)' || ''
+  }}
+
+# Security: Explicit permissions for GITHUB_TOKEN
+permissions:
+  contents: read
+  packages: read
+  id-token: write
+  actions: read
+
+# Concurrency: Prevent multiple deployments for the same target
+concurrency:
+  group: deploy-${{ inputs.environment || 'production' }}-${{ github.event.workflow_run.head_branch || inputs.image_tag || github.ref_name }}
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag to deploy (e.g., latest, main, sha-abc1234, 1.0.0)"
+        required: false
+        type: string
+        default: "latest"
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+  workflow_run:
+    workflows:
+      - Build
+    types:
+      - completed
+
+env:
+  CONCURRENCY_GROUP: deploy-${{ inputs.environment || 'production' }}-${{ github.event.workflow_run.head_branch || inputs.image_tag || github.ref_name }}
+  REGISTRY: ghcr.io
+  IMAGE_NAME_WEB: ${{ github.repository }}/web
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # Workflow metadata (runs first, always)
+  meta:
+    name: Workflow info
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Output workflow metadata
+        run: |
+          echo "### ⚙️ Workflow Info" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Concurrency Group** | \`$CONCURRENCY_GROUP\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Event** | \`${{ github.event_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image Tag** | \`${{ inputs.image_tag || github.event.workflow_run.head_branch || 'latest' }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Environment** | \`${{ inputs.environment || 'production' }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Actor** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Build Info" >> $GITHUB_STEP_SUMMARY
+            echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| **Build Event** | \`${{ github.event.workflow_run.event }}\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Build Conclusion** | \`${{ github.event.workflow_run.conclusion }}\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Build Run** | [#${{ github.event.workflow_run.run_number }}](${{ github.event.workflow_run.html_url }}) |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  verify-and-deploy:
+    name: Verify and deploy
+    needs:
+      - meta
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Only deploy if:
+    # - Manual dispatch, OR
+    # - Build succeeded AND was triggered by a release
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'release')
+    environment:
+      name: ${{ inputs.environment || 'production' }}
+    outputs:
+      build_sha: ${{ steps.resolve-tag.outputs.resolved_sha }}
+      image_tag: ${{ steps.resolve-tag.outputs.resolved_tag }}
+      full_image: ${{ steps.resolve-tag.outputs.full_image }}
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}/web
+      IMAGE_TAG: ${{ inputs.image_tag || github.event.workflow_run.head_branch || 'latest' }}
+      ENVIRONMENT: ${{ inputs.environment || 'production' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Resolve image tag
+        id: resolve-tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # If triggered manually, use the provided tag
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            IMAGE_TAG="${IMAGE_TAG}"
+            echo "📦 Using manually specified tag: ${IMAGE_TAG}"
+          # If triggered from workflow_run (after build completes)
+          elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            # Get the tag from the build workflow's head branch (release tag)
+            IMAGE_TAG="${{ github.event.workflow_run.head_branch }}"
+            echo "🚀 Build completed, using tag: ${IMAGE_TAG}"
+          else
+            IMAGE_TAG="latest"
+            echo "⚠️ Defaulting to 'latest' tag"
+          fi
+
+          FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+
+          # Resolve tag to commit SHA
+          if [[ "${IMAGE_TAG}" =~ ^[0-9a-f]{7,}$ ]]; then
+            RESOLVED_SHA="${IMAGE_TAG}"
+            echo "✅ Tag is commit SHA: ${RESOLVED_SHA}"
+          elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            RESOLVED_SHA="${{ github.event.workflow_run.head_sha }}"
+            echo "✅ Resolved to build commit SHA: ${RESOLVED_SHA}"
+          else
+            echo "⚠️  Could not resolve SHA for tag ${IMAGE_TAG}, using tag as-is"
+            RESOLVED_SHA="${IMAGE_TAG}"
+          fi
+
+          echo "resolved_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "resolved_sha=${RESOLVED_SHA}" >> $GITHUB_OUTPUT
+          echo "resolved_sha_short=${RESOLVED_SHA:0:7}" >> $GITHUB_OUTPUT
+          echo "full_image=${FULL_IMAGE}" >> $GITHUB_OUTPUT
+
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v3.12.0
+
+      - name: Verify image exists in registry
+        id: image-check
+        env:
+          REGISTRY: ghcr.io
+          IMAGE_NAME: ${{ github.repository }}/web
+        run: |
+          set -euo pipefail
+
+          FULL_IMAGE="${{ steps.resolve-tag.outputs.full_image }}"
+          echo "🔍 Verifying image exists in registry..."
+          echo "Checking image: ${FULL_IMAGE}"
+
+          # Login to registry
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login "${REGISTRY}" \
+            --username "${{ github.actor }}" \
+            --password-stdin
+
+          # Check if image exists using docker manifest inspect
+          if docker manifest inspect "${FULL_IMAGE}" > /dev/null 2>&1; then
+            echo "✅ Image found: ${FULL_IMAGE}"
+            echo "image_exists=true" >> $GITHUB_OUTPUT
+            
+            # Get image digest for verification
+            MANIFEST_JSON=$(docker manifest inspect "${FULL_IMAGE}" 2>/dev/null || echo "")
+            if [[ -n "${MANIFEST_JSON}" ]]; then
+              if command -v jq >/dev/null 2>&1; then
+                IMAGE_DIGEST=$(echo "${MANIFEST_JSON}" | jq -r '.config.digest // empty' 2>/dev/null || echo "")
+                if [[ -n "${IMAGE_DIGEST}" && "${IMAGE_DIGEST}" != "null" ]]; then
+                  echo "Image digest: ${IMAGE_DIGEST}"
+                  echo "image_digest=${IMAGE_DIGEST}" >> $GITHUB_OUTPUT
+                fi
+              fi
+            fi
+          else
+            echo "❌ Image not found: ${FULL_IMAGE}"
+            echo "image_exists=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Validate deployment parameters
+        run: |
+          set -euo pipefail
+
+          echo "🔍 Validating deployment parameters..."
+
+          # Validate image tag format
+          IMAGE_TAG="${{ steps.resolve-tag.outputs.resolved_tag }}"
+          if [[ ! "${IMAGE_TAG}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+            echo "❌ Invalid image tag format: ${IMAGE_TAG}"
+            echo "Tag must contain only alphanumeric characters, dots, underscores, and hyphens"
+            exit 1
+          fi
+
+          # Validate environment
+          ENVIRONMENT="${ENVIRONMENT}"
+          if [[ "${ENVIRONMENT}" != "staging" && "${ENVIRONMENT}" != "production" ]]; then
+            echo "❌ Invalid environment: ${ENVIRONMENT}"
+            echo "Environment must be 'staging' or 'production'"
+            exit 1
+          fi
+
+          echo "✅ All parameters validated"
+
+      - name: Display deployment parameters
+        run: |
+          set -euo pipefail
+
+          FULL_IMAGE="${{ steps.resolve-tag.outputs.full_image }}"
+          RESOLVED_SHA="${{ steps.resolve-tag.outputs.resolved_sha }}"
+          RESOLVED_SHA_SHORT="${{ steps.resolve-tag.outputs.resolved_sha_short }}"
+          IMAGE_TAG="${{ steps.resolve-tag.outputs.resolved_tag }}"
+          IMAGE_DIGEST="${{ steps.image-check.outputs.image_digest }}"
+
+          echo "## Deployment Parameters - WEB" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Image Information" >> $GITHUB_STEP_SUMMARY
+          echo "- **Registry:** \`${REGISTRY}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Name:** \`${IMAGE_NAME}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Tag:** \`${IMAGE_TAG}\`" >> $GITHUB_STEP_SUMMARY
+          if [[ -n "${RESOLVED_SHA}" ]]; then
+            echo "- **Resolved SHA:** \`${RESOLVED_SHA_SHORT}\` (${RESOLVED_SHA})" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- **Full Image:** \`${FULL_IMAGE}\`" >> $GITHUB_STEP_SUMMARY
+          if [[ -n "${IMAGE_DIGEST}" ]]; then
+            echo "- **Image Digest:** \`${IMAGE_DIGEST}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployment Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** \`${ENVIRONMENT}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered By:** \`${{ github.actor }}\`" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            echo "- **Build Workflow:** \`${{ github.event.workflow_run.name }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Build Run:** [${{ github.event.workflow_run.id }}](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🚀 DEPLOYMENT PARAMETERS - WEB"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Image Information:"
+          echo "  Registry:        ${REGISTRY}"
+          echo "  Image Name:      ${IMAGE_NAME}"
+          echo "  Image Tag:       ${IMAGE_TAG}"
+          if [[ -n "${RESOLVED_SHA}" ]]; then
+            echo "  Resolved SHA:    ${RESOLVED_SHA_SHORT} (${RESOLVED_SHA})"
+          fi
+          echo "  Full Image:      ${FULL_IMAGE}"
+          if [[ -n "${IMAGE_DIGEST}" ]]; then
+            echo "  Image Digest:    ${IMAGE_DIGEST}"
+          fi
+          echo ""
+          echo "Deployment Configuration:"
+          echo "  Environment:     ${ENVIRONMENT}"
+          echo "  Triggered By:    ${{ github.actor }}"
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            echo "  Build Workflow:  ${{ github.event.workflow_run.name }}"
+            echo "  Build Run ID:    ${{ github.event.workflow_run.id }}"
+          fi
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      - name: Deploy via SSH
+        if: steps.image-check.outputs.image_exists == 'true'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ vars.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ vars.SSH_PORT }}
+          script: |
+            cd /srv/budgetly
+            docker compose pull web
+            docker compose up -d web
