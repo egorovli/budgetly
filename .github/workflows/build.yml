@@ -98,7 +98,7 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Upload node_modules artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: node_modules
           path: node_modules
@@ -304,7 +304,7 @@ jobs:
           bun test --reporter=junit --reporter-outfile=./test-results/junit.xml
 
       - name: Upload test results artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-results-web
