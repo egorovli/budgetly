@@ -1,17 +1,10 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { RoutePlaceholder } from '@/screens/route-placeholder'
 
-export default function HomeScreen() {
+export default function WelcomeRoute() {
 	return (
-		<View style={styles.container}>
-			<Text>Budgetly</Text>
-		</View>
+		<RoutePlaceholder
+			description='Open an existing Book or create the first one.'
+			title='Welcome'
+		/>
 	)
 }
-
-const styles = StyleSheet.create({
-	container: {
-		alignItems: 'center',
-		flex: 1,
-		justifyContent: 'center'
-	}
-})
