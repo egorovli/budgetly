@@ -1,0 +1,24 @@
+.DS_Store
+
+# Dependencies and package-manager caches
+node_modules/
+.npm/
+
+# Logs and local environment
+*.log
+.env
+.env.*
+!.env.example
+
+# TypeScript and test output
+*.tsbuildinfo
+coverage/
+
+# Expo-generated state and native projects
+packages/mobile/.expo/
+packages/mobile/android/
+packages/mobile/ios/
+
+# Generated build output
+dist/
+build/
