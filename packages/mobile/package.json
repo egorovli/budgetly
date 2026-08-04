@@ -1,11 +1,38 @@
 {
 	"name": "@budgetly/mobile",
-	"main": "expo-router/entry",
+	"main": "./src/index",
 	"version": "1.0.0",
+	"private": true,
+	"scripts": {
+		"start": "expo start --dev-client",
+		"start:clear": "expo start --dev-client --clear",
+		"ios": "expo run:ios",
+		"android": "expo run:android",
+		"web": "expo start --web",
+		"prebuild": "expo prebuild",
+		"config:check": "expo config --type public --json",
+		"skia:web:setup": "setup-skia-web",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"types:check": "tsc --noEmit"
+	},
+	"expo": {
+		"install": {
+			"exclude": [
+				"@shopify/flash-list",
+				"@shopify/react-native-skia"
+			]
+		}
+	},
 	"dependencies": {
+		"@expo/metro-runtime": "~57.0.8",
 		"@expo/ui": "~57.0.9",
+		"@react-native/normalize-colors": "0.86.2",
+		"@shopify/flash-list": "2.3.2",
+		"@shopify/react-native-skia": "2.10.1",
 		"expo": "~57.0.10",
 		"expo-constants": "~57.0.9",
+		"expo-dev-client": "~57.0.10",
 		"expo-device": "~57.0.1",
 		"expo-font": "~57.0.1",
 		"expo-glass-effect": "~57.0.1",
@@ -21,20 +48,16 @@
 		"react-dom": "19.2.8",
 		"react-native": "0.86.2",
 		"react-native-gesture-handler": "~2.32.0",
+		"react-native-nitro-modules": "0.36.5",
 		"react-native-reanimated": "4.5.3",
 		"react-native-safe-area-context": "~5.8.1",
 		"react-native-screens": "~4.26.2",
+		"react-native-unistyles": "3.3.0",
 		"react-native-web": "~0.21.2",
 		"react-native-worklets": "0.10.1"
 	},
 	"devDependencies": {
 		"@types/react": "~19.2.18",
 		"typescript": "~7.0.2"
-	},
-	"scripts": {
-		"lint": "biome check .",
-		"lint:fix": "biome check --write .",
-		"types:check": "tsc --noEmit"
-	},
-	"private": true
+	}
 }
