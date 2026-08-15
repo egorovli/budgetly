@@ -1,10 +1,5 @@
-import { RoutePlaceholder } from '@/screens/route-placeholder'
+import { WelcomeScreen } from '~/screens/prototype-onboarding.tsx'
 
 export default function WelcomeRoute() {
-	return (
-		<RoutePlaceholder
-			description='Open an existing Book or create the first one.'
-			title='Welcome'
-		/>
-	)
+	return <WelcomeScreen />
 }

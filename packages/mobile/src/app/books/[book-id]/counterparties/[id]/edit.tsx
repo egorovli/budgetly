@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router'
 
-import { RoutePlaceholder } from '@/screens/route-placeholder'
+import { CounterpartyFormScreen } from '~/screens/prototype-forms.tsx'
 
 interface RouteParams extends Record<string, string> {
 	'book-id': string
@@ -11,9 +11,9 @@ export default function EditCounterpartyRoute() {
 	const { 'book-id': bookId, id } = useLocalSearchParams<RouteParams>()
 
 	return (
-		<RoutePlaceholder
-			params={{ bookId, counterpartyId: id }}
-			title='Edit Counterparty'
+		<CounterpartyFormScreen
+			bookId={bookId}
+			id={id}
 		/>
 	)
 }

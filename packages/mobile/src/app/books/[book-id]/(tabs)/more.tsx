@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router'
 
-import { RoutePlaceholder } from '@/screens/route-placeholder'
+import { MoreScreen } from '~/screens/prototype-overview.tsx'
 
 interface RouteParams extends Record<string, string> {
 	'book-id': string
@@ -9,11 +9,5 @@ interface RouteParams extends Record<string, string> {
 export default function MoreRoute() {
 	const { 'book-id': bookId } = useLocalSearchParams<RouteParams>()
 
-	return (
-		<RoutePlaceholder
-			description='Open Accounts, Categories, Counterparties, Reports, Book settings, and data tools.'
-			params={{ bookId }}
-			title='More'
-		/>
-	)
+	return <MoreScreen bookId={bookId} />
 }

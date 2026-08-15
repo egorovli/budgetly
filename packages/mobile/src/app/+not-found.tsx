@@ -1,11 +1,15 @@
-import { Link } from 'expo-router'
-import { Text, View } from 'react-native'
+import { ActionLink, PrototypeScreen } from '~/components/prototype-ui.tsx'
 
 export default function NotFoundRoute() {
 	return (
-		<View>
-			<Text>Page not found</Text>
-			<Link href='/'>Return to Budgetly</Link>
-		</View>
+		<PrototypeScreen
+			description='This route is not part of the current click-through.'
+			title='Page not found'
+		>
+			<ActionLink
+				href='/'
+				label='Return to Budgetly'
+			/>
+		</PrototypeScreen>
 	)
 }

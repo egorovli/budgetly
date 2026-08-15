@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router'
 
-import { RoutePlaceholder } from '@/screens/route-placeholder'
+import { ReserveFormScreen } from '~/screens/prototype-forms.tsx'
 
 interface RouteParams extends Record<string, string> {
 	'book-id': string
@@ -9,10 +9,5 @@ interface RouteParams extends Record<string, string> {
 export default function NewReserveRoute() {
 	const { 'book-id': bookId } = useLocalSearchParams<RouteParams>()
 
-	return (
-		<RoutePlaceholder
-			params={{ bookId }}
-			title='Create Reserve'
-		/>
-	)
+	return <ReserveFormScreen bookId={bookId} />
 }

@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router'
 
-import { RoutePlaceholder } from '@/screens/route-placeholder'
+import { HomeScreen } from '~/screens/prototype-overview.tsx'
 
 interface RouteParams extends Record<string, string> {
 	'book-id': string
@@ -9,11 +9,5 @@ interface RouteParams extends Record<string, string> {
 export default function BookHomeRoute() {
 	const { 'book-id': bookId } = useLocalSearchParams<RouteParams>()
 
-	return (
-		<RoutePlaceholder
-			description='Show Free amount, Available money, Reserves, net worth, Accounts, and recent activity.'
-			params={{ bookId }}
-			title='Home'
-		/>
-	)
+	return <HomeScreen bookId={bookId} />
 }

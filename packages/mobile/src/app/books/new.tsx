@@ -1,10 +1,5 @@
-import { RoutePlaceholder } from '@/screens/route-placeholder'
+import { BookFormScreen } from '~/screens/prototype-onboarding.tsx'
 
 export default function NewBookRoute() {
-	return (
-		<RoutePlaceholder
-			description='Name the financial dataset and choose its base currency.'
-			title='Create Book'
-		/>
-	)
+	return <BookFormScreen />
 }

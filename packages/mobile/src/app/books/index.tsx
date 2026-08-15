@@ -1,10 +1,5 @@
-import { RoutePlaceholder } from '@/screens/route-placeholder'
+import { BooksScreen } from '~/screens/prototype-onboarding.tsx'
 
 export default function BooksRoute() {
-	return (
-		<RoutePlaceholder
-			description='Switch between independent financial datasets.'
-			title='Books'
-		/>
-	)
+	return <BooksScreen />
 }

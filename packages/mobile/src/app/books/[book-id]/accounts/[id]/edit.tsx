@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router'
 
-import { RoutePlaceholder } from '@/screens/route-placeholder'
+import { AccountFormScreen } from '~/screens/prototype-forms.tsx'
 
 interface RouteParams extends Record<string, string> {
 	'book-id': string
@@ -11,9 +11,9 @@ export default function EditAccountRoute() {
 	const { 'book-id': bookId, id } = useLocalSearchParams<RouteParams>()
 
 	return (
-		<RoutePlaceholder
-			params={{ accountId: id, bookId }}
-			title='Edit Account'
+		<AccountFormScreen
+			bookId={bookId}
+			id={id}
 		/>
 	)
 }

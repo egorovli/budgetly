@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/style/noCommonJs: Babel configuration is loaded as CommonJS */
+/** biome-ignore-all lint/style/noCommonJs: Babel loads this configuration through CommonJS */
 
 /**
  * @param {import('@babel/core').ConfigAPI} api

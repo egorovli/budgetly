@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router'
 
-import { RoutePlaceholder } from '@/screens/route-placeholder'
+import { BalanceAdjustmentScreen } from '~/screens/prototype-accounts.tsx'
 
 interface RouteParams extends Record<string, string> {
 	'book-id': string
@@ -11,9 +11,9 @@ export default function NewBalanceAdjustmentRoute() {
 	const { 'book-id': bookId, id } = useLocalSearchParams<RouteParams>()
 
 	return (
-		<RoutePlaceholder
-			params={{ accountId: id, bookId }}
-			title='Balance adjustment'
+		<BalanceAdjustmentScreen
+			accountId={id}
+			bookId={bookId}
 		/>
 	)
 }
