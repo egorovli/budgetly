@@ -1,5 +1,14 @@
 # Agent instructions
 
+## Project principles
+
+Product and engineering decisions follow `docs/principles.md` in its stated
+priority order.
+
+## Communication
+
+- Talk in ASD-STE100 Simplified Technical English, and use the ubiquitous language from `CONTEXT.md`.
+
 ## Agent skills
 
 ### Issue tracker
